@@ -1,38 +1,59 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { useAppContext } from './context/AppContext';
 
-import { Navigate, Route, Routes } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-
-
-
-import Home from './pages/home/Home'
-import LoginPage from './pages/auth/LoginPage'
-import SignUpPage from './pages/auth/SignUpPage'
-import Navbar from './components/Navbar'
-import Footer from './components/Footer'
+import Home from './pages/home/Home';
+import LoginPage from './pages/auth/LoginPage';
+import SignUpPage from './pages/auth/SignUpPage';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import Dashboard from './pages/dashboard/Dashboard';
+import Team from './pages/dashboard/Team';
+import Layout from './pages/dashboard/Layout';
+import Tasks from './pages/dashboard/Tasks';
+import Calendar from './pages/dashboard/Calender';
 
 const App = () => {
+  const { isLoggedIn, userData } = useAppContext();
+
   return (
     <div className='flex flex-col justify-between min-h-screen'>
       <Toaster position="top-right" reverseOrder={false} />
-      <Navbar/>
+      {/* <Navbar /> */}
 
-<div className='pt-12'> 
-      <Routes>
-      
-        {/* PUBLIC ROUTES (No login required)          */}
-        {/* ========================================== */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="/" element={<Home />} />
-        {/* CATCH ALL - Redirect unknown paths to home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div className=''>
+        <Routes>
+          {/* PUBLIC ROUTES */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={!isLoggedIn ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/signup" element={!isLoggedIn ? <SignUpPage /> : <Navigate to="/" />} />
+
+          {/* PROTECTED USER ROUTES */}
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/team" element={<Team />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/calendar" element={<Calendar />} />
+            {/* Any other page added here will automatically have the sidebar/navbar */}
+          </Route>
+          {/* <Route path="/dashboard/projects" element={<Projects />} />
+          <Route path="/dashboard/projectsDetail" element={<ProjectDetails />} />
+          <Route path="/dashboard/taskDetails" element={<TaskDetails />} /> */}
+
+          {/* PROTECTED ADMIN ROUTES */}
+          <Route
+            path="/admin"
+            element={isLoggedIn && userData?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />}
+          />
+
+          {/* CATCH ALL */}
+
+        </Routes>
       </div>
-      <Footer/>
-
- 
+      <Footer />
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;

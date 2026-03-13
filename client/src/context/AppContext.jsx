@@ -32,10 +32,10 @@ const AppContextProvider = ({ children }) => {
 
             try {
                 // Example: Fetch user profile using the token
-                // const { data } = await axios.get(`${backendUrl}/api/user/profile`, {
-                //     headers: { Authorization: `Bearer ${token}` }
-                // });
-                // setUserData(data.user);
+                const { data } = await axios.get(`${backendUrl}/api/user/me`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setUserData(data.user);
                 setIsLoggedIn(true);
             } catch (error) {
                 console.error("Auth initialization failed", error);

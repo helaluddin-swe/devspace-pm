@@ -26,13 +26,14 @@ const UserSchema = new Schema({
     default: 'user'
   },
   stats: {
-    totalTestsTaken: { type: Number, default: 0 },
-    totalSolved: { type: Number, default: 0 },
-    totalCorrect: { type: Number, default: 0 },
-    totalWrong: { type: Number, default: 0 },
-    totalPoints: { type: Number, default: 0 },
-    lastTestDate: { type: Date }
-  },
+  activeProjects: { type: Number, default: 0 },    // Projects currently in progress
+  totalTasksAssigned: { type: Number, default: 0 }, // Lifetime tasks given to user
+  completedTasks: { type: Number, default: 0 },    // Successfully finished tasks
+  overdueTasks: { type: Number, default: 0 },      // Tasks missed by the deadline
+  totalHoursLogged: { type: Number, default: 0 },   // For time-tracking/billing
+  efficiencyScore: { type: Number, default: 100 }, // Calculated metric (e.g., tasks done vs. deadlines)
+  lastActivityDate: { type: Date, default: Date.now }
+},
   isVerified: {
     type: Boolean,
     default: false
