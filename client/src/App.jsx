@@ -13,6 +13,8 @@ import Team from './pages/dashboard/Team';
 import Layout from './pages/dashboard/Layout';
 import Tasks from './pages/dashboard/Tasks';
 import Calendar from './pages/dashboard/Calender';
+import TaskDetails from './pages/dashboard/TaskDetails';
+import MemberDetails from './pages/dashboard/MemberDetails';
 
 const App = () => {
   const { isLoggedIn, userData } = useAppContext();
@@ -33,13 +35,15 @@ const App = () => {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/team" element={<Team />} />
+            
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/calendar" element={<Calendar />} />
+            <Route path="/dashboard/:id" element={<TaskDetails />} />
             {/* Any other page added here will automatically have the sidebar/navbar */}
           </Route>
           {/* <Route path="/dashboard/projects" element={<Projects />} />
           <Route path="/dashboard/projectsDetail" element={<ProjectDetails />} />
-          <Route path="/dashboard/taskDetails" element={<TaskDetails />} /> */}
+          
 
           {/* PROTECTED ADMIN ROUTES */}
           <Route
