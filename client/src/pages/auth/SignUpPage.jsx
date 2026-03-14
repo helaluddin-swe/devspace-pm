@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import axios from 'axios';
-import toast from 'react-hot-toast'; // Ensure this is imported
+import toast from 'react-hot-toast';
 import { ShieldAlert, User, Mail, Lock, ShieldCheck } from 'lucide-react';
 
 const SignUpPage = () => {
@@ -18,7 +18,13 @@ const SignUpPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const navigate = useNavigate();
-  const { backendUrl, setIsLoggedIn, setUserData, setIsAdminAuthenticated } = useAppContext();
+  
+  // Destructure 'login' from context to sync global state instantly
+  const { 
+    backendUrl, 
+    login,
+    setIsAdminAuthenticated 
+  } = useAppContext();
 
   const updateForm = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -26,13 +32,12 @@ const SignUpPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (isAdminMode && !formData.adminSecret.trim()) {
       return toast.error("Master Secret Key is required for Admin enrollment.");
     }
 
     setIsSubmitting(true);
-    
-
 
     try {
       const payload = {
@@ -41,27 +46,25 @@ const SignUpPage = () => {
         adminSecret: isAdminMode ? formData.adminSecret : undefined
       };
 
-      const response = await axios.post(`${backendUrl}/api/signup`, payload);
+      // Ensure the endpoint matches your backend route
+      const { data } = await axios.post(`${backendUrl}/api/signup`, payload);
       
-      if (response.data.success) {
-        const { token, user, message } = response.data;
+      if (data.success) {
+        // 1. Update Global State (Fixes Home Page redirect issue)
+        login(data.user, data.token); 
 
-        localStorage.setItem('token', token);
-        setIsLoggedIn(true);
-        setUserData(user);
+        toast.success(data.message || "Registration Successful!");
 
-        // FIX: Replaced alert with toast
-        toast.success(message || "Registration Successful!");
-
-        if (user.role === 'admin') {
-          setIsAdminAuthenticated(true); 
+        // 2. Role-based Navigation
+        if (data.user.role === 'admin') {
+          if (setIsAdminAuthenticated) setIsAdminAuthenticated(true); 
           navigate('/admin-control-center');
         } else {
-          navigate('/');
+          // Standard users go to dashboard
+          navigate('/dashboard');
         }
       }
     } catch (error) {
-      // Improved error logging for debugging
       const errorMsg = error.response?.data?.message || "Registration failed";
       toast.error(errorMsg);
     } finally {
@@ -76,12 +79,12 @@ const SignUpPage = () => {
         <div className={`absolute top-0 left-0 w-full h-1 transition-colors duration-500 ${isAdminMode ? 'bg-amber-500' : 'bg-indigo-600'}`} />
 
         <div className="text-center mb-8">
-           <h2 className="text-3xl font-black text-white tracking-tight">
-            {isAdminMode ? 'Staff Enrollment' : 'Create Account'}
-           </h2>
-           <p className="text-slate-400 text-sm mt-2">
-            {isAdminMode ? 'Elevated Access Registration' : 'Join the Destination BCS platform'}
-           </p>
+            <h2 className="text-3xl font-black text-white tracking-tight">
+             {isAdminMode ? 'Staff Enrollment' : 'Create Account'}
+            </h2>
+            <p className="text-slate-400 text-sm mt-2">
+             {isAdminMode ? 'Elevated Access Registration' : 'Join the Destination BCS platform'}
+            </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -92,7 +95,8 @@ const SignUpPage = () => {
             <input
               type="text"
               required
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition"
+              disabled={isSubmitting}
+              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition disabled:opacity-50"
               placeholder="Helal Uddin"
               value={formData.name}
               onChange={(e) => updateForm('name', e.target.value)}
@@ -106,7 +110,8 @@ const SignUpPage = () => {
             <input
               type="email"
               required
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition"
+              disabled={isSubmitting}
+              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition disabled:opacity-50"
               placeholder="helal@dev.com"
               value={formData.email}
               onChange={(e) => updateForm('email', e.target.value)}
@@ -120,8 +125,9 @@ const SignUpPage = () => {
             <input
               type="password"
               required
+              disabled={isSubmitting}
               minLength={6}
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition"
+              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition disabled:opacity-50"
               placeholder="••••••••"
               value={formData.password}
               onChange={(e) => updateForm('password', e.target.value)}
@@ -131,12 +137,13 @@ const SignUpPage = () => {
           <div className="pt-2">
             <button 
               type="button"
+              disabled={isSubmitting}
               onClick={() => {
                 const nextMode = !isAdminMode;
                 setIsAdminMode(nextMode);
                 if (!nextMode) updateForm('adminSecret', '');
               }}
-              className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors ${isAdminMode ? 'text-amber-500' : 'text-indigo-400'}`}
+              className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors disabled:opacity-50 ${isAdminMode ? 'text-amber-500' : 'text-indigo-400'}`}
             >
               {isAdminMode ? <User size={14}/> : <ShieldAlert size={14}/>}
               {isAdminMode ? "Register as standard user" : "Register as Admin / Instructor?"}
@@ -151,7 +158,8 @@ const SignUpPage = () => {
               <input
                 type="password"
                 required={isAdminMode}
-                className="w-full bg-amber-500/5 border border-amber-500/20 px-4 py-3 rounded-xl text-amber-400 focus:ring-2 focus:ring-amber-500 outline-none transition placeholder:text-amber-900/50"
+                disabled={isSubmitting}
+                className="w-full bg-amber-500/5 border border-amber-500/20 px-4 py-3 rounded-xl text-amber-400 focus:ring-2 focus:ring-amber-500 outline-none transition placeholder:text-amber-900/50 disabled:opacity-50"
                 placeholder="Enter root secret key"
                 value={formData.adminSecret}
                 onChange={(e) => updateForm('adminSecret', e.target.value)}
@@ -162,7 +170,7 @@ const SignUpPage = () => {
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest text-white transition-all duration-200 shadow-lg mt-4 ${
+            className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest text-white transition-all duration-200 shadow-lg mt-4 flex items-center justify-center gap-2 ${
                 isSubmitting 
                 ? 'bg-slate-700 cursor-not-allowed' 
                 : isAdminMode 
@@ -170,13 +178,24 @@ const SignUpPage = () => {
                     : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
             } active:scale-95`}
           >
-            {isSubmitting ? 'Registering...' : isAdminMode ? 'Initialize Admin' : 'Create Account'}
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Registering...
+              </>
+            ) : isAdminMode ? 'Initialize Admin' : 'Create Account'}
           </button>
         </form>
 
         <p className="mt-8 text-center text-sm text-slate-500">
           Already have an account?
-          <button onClick={() => navigate('/login')} className="ml-2 text-indigo-400 font-bold hover:underline">Log In</button>
+          <button 
+            disabled={isSubmitting}
+            onClick={() => navigate('/login')} 
+            className="ml-2 text-indigo-400 font-bold hover:underline disabled:opacity-50"
+          >
+            Log In
+          </button>
         </p>
       </div>
     </div>

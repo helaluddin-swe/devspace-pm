@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import axios from 'axios';
@@ -12,56 +12,47 @@ const LoginPage = () => {
   const [isStaffMode, setIsStaffMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const navigate = useNavigate();
+ 
+  
+  // Pull 'login' from context to update global state immediately
   const { 
     backendUrl, 
-    setIsLoggedIn, 
-    setUserData, 
-    setIsAdminAuthenticated 
+    login ,isLoggedIn,navigate
   } = useAppContext();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  // Inside LoginPage.jsx
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    try {
-      // Based on your backend: Admin needs 'role' and 'adminSecret'
-      const payload = {
-        email,
-        password,
-        role: isStaffMode ? 'admin' : 'user',
-        ...(isStaffMode && { adminSecret })
-      };
+  try {
+    const { data } = await axios.post(`${backendUrl}/api/login`, {
+      email,
+      password,
+      role: isStaffMode ? 'admin' : 'user', // MUST send role
+      adminSecret: isStaffMode ? adminSecret : undefined // Send secret if admin
+    });
 
-      const response = await axios.post(`${backendUrl}/api/login`, payload);
-
-      if (response.data.success) {
-        const { token, user } = response.data;
-
-        localStorage.setItem('token', token);
-        
-        // If the backend returns an admin role, unlock the context guard
-        if (user.role.toLowerCase() === 'admin') {
-          setIsAdminAuthenticated(true); 
-        }
-
-        setUserData(user);
-        setIsLoggedIn(true);
-
-        toast.success("Login Successful!");
-
-        if (user.role === 'admin' || user.role === 'moderator') {
-          navigate('/admin-control-center');
-        } else {
-          navigate('/');
-        }
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
-    } finally {
-      setIsSubmitting(false);
+    if (data.success) {
+      // 1. Update Global State (This fixes the Home page issue)
+      login(data.user, data.token); 
+      
+      toast.success("Login Successful");
+      
+      // 2. Redirect
+      navigate(data.user.role === 'admin' ? '/admin' : '/dashboard');
     }
-  };
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Login failed");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+useEffect(() => {
+  if (isLoggedIn) {
+    navigate('/dashboard');
+  }
+}, [isLoggedIn]); // If isLoggedIn flips back to false accidentally, you stay here.
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#020617] px-4 font-sans">
@@ -89,8 +80,9 @@ const LoginPage = () => {
             <input 
               type="email" 
               required
+              disabled={isSubmitting}
               value={email}
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition"
+              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition disabled:opacity-50"
               placeholder="name@example.com"
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -103,8 +95,9 @@ const LoginPage = () => {
             <input 
               type="password" 
               required
+              disabled={isSubmitting}
               value={password}
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition"
+              className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-white focus:ring-2 focus:ring-indigo-600 outline-none transition disabled:opacity-50"
               placeholder="••••••••"
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -118,8 +111,9 @@ const LoginPage = () => {
               <input 
                 type="password" 
                 required
+                disabled={isSubmitting}
                 value={adminSecret}
-                className="w-full bg-amber-500/5 border border-amber-500/20 px-4 py-3 rounded-xl text-amber-400 focus:ring-2 focus:ring-amber-600 outline-none transition"
+                className="w-full bg-amber-500/5 border border-amber-500/20 px-4 py-3 rounded-xl text-amber-400 focus:ring-2 focus:ring-amber-600 outline-none transition disabled:opacity-50"
                 placeholder="Enter secret key"
                 onChange={(e) => setAdminSecret(e.target.value)}
               />
@@ -129,17 +123,23 @@ const LoginPage = () => {
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest text-white transition-all duration-200 shadow-lg active:scale-95 ${
+            className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest text-white transition-all duration-200 shadow-lg active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed ${
               isStaffMode ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-900/20' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
             }`}
           >
-            {isSubmitting ? 'Verifying...' : 'Sign In'}
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                Verifying...
+              </span>
+            ) : 'Sign In'}
           </button>
 
           <button 
             type="button"
+            disabled={isSubmitting}
             onClick={() => setIsStaffMode(!isStaffMode)}
-            className="w-full text-[10px] text-slate-500 font-bold uppercase hover:text-white transition-colors flex items-center justify-center gap-1"
+            className="w-full text-[10px] text-slate-500 font-bold uppercase hover:text-white transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
           >
             <ShieldCheck size={12}/> {isStaffMode ? "Switch to Student Login" : "Switch to Staff Login"}
           </button>
@@ -147,7 +147,13 @@ const LoginPage = () => {
 
         <p className="mt-8 text-center text-sm text-slate-500">
           Don't have an account? 
-          <button onClick={() => navigate('/signup')} className="ml-2 text-indigo-400 font-bold hover:underline">Sign up for free</button>
+          <button 
+            disabled={isSubmitting}
+            onClick={() => navigate('/signup')} 
+            className="ml-2 text-indigo-400 font-bold hover:underline disabled:opacity-50"
+          >
+            Sign up for free
+          </button>
         </p>
       </div>
     </div>

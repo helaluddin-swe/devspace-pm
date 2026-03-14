@@ -18,21 +18,15 @@ exports.registerUser = async (req, res) => {
   try {
     const { name, email, password, role, adminSecret } = req.body;
 
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: "User already exists" });
     }
 
-    // Role & Secret Key Verification
     let finalRole = 'user'; 
     if (role === 'admin') {
-      // Check against environment variable
       if (adminSecret !== process.env.ADMIN_SECRET_CODE) {
-        return res.status(403).json({ 
-          success: false, 
-          message: "Unauthorized: Invalid Admin Secret Key" 
-        });
+        return res.status(403).json({ success: false, message: "Invalid Admin Secret Key" });
       }
       finalRole = 'admin';
     }
@@ -45,13 +39,16 @@ exports.registerUser = async (req, res) => {
       email, 
       password: hashedPassword,
       role: finalRole,
-      isVerified: finalRole === 'admin' // Auto-verify admins if desired
+      isVerified: finalRole === 'admin'
     });
+
+    const token = generateToken(newUser);
 
     res.status(201).json({ 
       success: true, 
       message: `Registered successfully as ${finalRole}`, 
-      user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role } 
+      token, // Send token on registration so they are logged in immediately
+      user: newUser // The toJSON transform in your model will automatically remove the password
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -63,19 +60,14 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password, role, adminSecret } = req.body;
 
-    // 1. Find user by email and specific role
     const user = await User.findOne({ email, role });
     if (!user) return res.status(404).json({ success: false, message: "Account not found for this role" });
 
-    // 2. Verify Password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ success: false, message: "Invalid credentials" });
 
-    // 3. IF Admin, Verify Secret Key
-    if (role === 'admin') {
-      if (adminSecret !== process.env.ADMIN_SECRET_CODE) {
+    if (role === 'admin' && adminSecret !== process.env.ADMIN_SECRET_CODE) {
         return res.status(403).json({ success: false, message: "Invalid Admin Secret Key" });
-      }
     }
 
     const token = generateToken(user);
@@ -83,7 +75,7 @@ exports.loginUser = async (req, res) => {
     res.status(200).json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      user: user // Sending full user object including stats
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error" });
